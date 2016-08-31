@@ -6,9 +6,75 @@ import os,time
 import base64
 import json
 import PyBaiduYuyin as pby
+import httplib
+import re
+import subprocess
+import codecs
+from lxml import etree
+from select import select
 import sys  
 reload(sys)  
 sys.setdefaultencoding('utf-8')
+
+## ready for baidumusic
+reponse = urllib2.urlopen("http://music.baidu.com/songlist")
+html = reponse.read()
+reponse.close()
+tree=etree.HTML(html)
+ids =tree.xpath("//a[@sid]/@sid")
+names = tree.xpath("//a[@sid]/@title")
+url = "http://music.baidu.com/data/music/fmlink?type=mp3&rate=320&songIds="
+
+def control():
+        rlist, _, _ = select([sys.stdin], [], [], 1)
+        if rlist:
+            s = sys.stdin.readline()
+            if s[0] == 'n':
+                return 'next'
+            if s[0] == 'p':
+                return 'prev'
+	    if s[0] == 'e':
+		return 'end'
+	
+def start(i):
+    while i < len(ids):
+        playmode = True
+	print("贾维斯：正在为您播放：" + names[i] + "，您可以键入n来播放下一曲，键入p来播放上一曲，键入e来结束播放。")
+	tts = pby.TTS(app_key="MRFQBZjw0V8D9GArQ5Akh2y7",secret_key="4c499b8b21d0fc600c735265d781228e")
+        tts.say('正在为您播放：'.decode('utf-8') + names[i])
+	tts = pby.TTS(app_key="MRFQBZjw0V8D9GArQ5Akh2y7",secret_key="4c499b8b21d0fc600c735265d781228e")
+        tts.say("您可以键入n来播放下一曲，键入p来播放上一曲，键入e来结束播放。")
+        reponses = urllib2.urlopen(url+ids[i])
+        htmls = reponses.read()
+        song = json.loads(htmls)
+        song = song['data']
+        song = song['songList']
+        song = song[0]
+        durations = song['time']
+        starttime = time.time()
+        player = subprocess.Popen(['mpg123', '-v',song['songLink']], shell=False, universal_newlines=True, stdin=None,
+                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+        while playmode:
+            c = control()
+            endtime = time.time()
+            usetime = endtime - starttime - durations
+            if c == 'next' or usetime > 2:
+                player.kill()
+                i = i + 1
+                break
+            if c == 'prev':
+                player.kill()
+                i = i - 1
+                break
+	    if c == 'end':
+		player.kill()	
+		i = len(ids) + 1
+		print("贾维斯：正在结束播放，请稍等...")
+	  	tts = pby.TTS(app_key="MRFQBZjw0V8D9GArQ5Akh2y7",secret_key="4c499b8b21d0fc600c735265d781228e")
+        	tts.say("正在结束播放，请稍等...")
+                time.sleep(1)
+                break
 
 ## get access token by api key & secret key
 
@@ -71,9 +137,11 @@ if __name__ == '__main__':
             			tts = pby.TTS(app_key="MRFQBZjw0V8D9GArQ5Akh2y7",secret_key="4c499b8b21d0fc600c735265d781228e")
             			tts.say("好的，歌曲马上呈现！")
             			time.sleep(1)
-				os.system('mplayer yy/海鸣威-老人与海.mp3')
-            			os.system('mplayer yy/林俊杰-曹操.mp3')
-            			os.system('mplayer yy/张悬-宝贝.mp3')
+				y = 0
+				start (y)
+				##os.system('mplayer yy/海鸣威-老人与海.mp3')
+            			##os.system('mplayer yy/林俊杰-曹操.mp3')
+            			##os.system('mplayer yy/张悬-宝贝.mp3')
 				time.sleep(1)
 			else:		
 				info = result['result'][0]
@@ -83,8 +151,6 @@ if __name__ == '__main__':
 				print '贾维斯：'.decode('utf-8') + dic_json['text']
 				tts = pby.TTS(app_key="MRFQBZjw0V8D9GArQ5Akh2y7",secret_key="4c499b8b21d0fc600c735265d781228e")
             			tts.say(''.decode('utf-8') + dic_json['text'])	
-		else :	
-			tts = pby.TTS(app_key="MRFQBZjw0V8D9GArQ5Akh2y7",secret_key="4c499b8b21d0fc600c735265d781228e")
-	            	tts.say('贾维斯：很抱歉，没有听清楚，可以重新说一遍吗？')
-			
-
+		##else :	
+			##tts = pby.TTS(app_key="MRFQBZjw0V8D9GArQ5Akh2y7",secret_key="4c499b8b21d0fc600c735265d781228e")
+	            	##tts.say('贾维斯：很抱歉，没有听清楚，可以重新说一遍吗？')
